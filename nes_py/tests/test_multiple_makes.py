@@ -26,7 +26,7 @@ def play(steps):
         if done:
             _ = env.reset()
         action = env.action_space.sample()
-        _, _, done, _ = env.step(action)
+        _, _, done, _, _ = env.step(action)
     # close the environment
     env.close()
 
@@ -84,4 +84,4 @@ class ShouldMakeMultipleEnvironmentsSingleThread(TestCase):
                 if dones[idx]:
                     _ = envs[idx].reset()
                 action = envs[idx].action_space.sample()
-                _, _, dones[idx], _ = envs[idx].step(action)
+                _, _, dones[idx], _, _ = envs[idx].step(action)

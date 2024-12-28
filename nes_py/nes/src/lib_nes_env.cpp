@@ -4,84 +4,83 @@
 //
 //  Copyright (c) 2019 Christian Kauten. All rights reserved.
 //
-
-#include <string>
 #include "common.hpp"
 #include "emulator.hpp"
 
-// Windows-base systems
-#if defined(_WIN32) || defined(WIN32) || defined(__CYGWIN__) || defined(__MINGW32__) || defined(__BORLANDC__)
-    // setup the module initializer. required to link visual studio C++ ctypes
-    void PyInit_lib_nes_env() { }
-    // setup the function modifier to export in the DLL
-    #define EXP __declspec(dllexport)
-// Unix-like systems
-#else
-    // setup the modifier as a dummy
-    #define EXP
-#endif
+#include <string>
 
-// definitions of functions for the Python interface to access
-extern "C" {
-    /// Return the width of the NES.
-    EXP int Width() {
-        return NES::Emulator::WIDTH;
-    }
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
 
-    /// Return the height of the NES.
-    EXP int Height() {
-        return NES::Emulator::HEIGHT;
-    }
+namespace py = pybind11;
 
-    /// Initialize a new emulator and return a pointer to it
-    EXP NES::Emulator* Initialize(wchar_t* path) {
-        // convert the c string to a c++ std string data structure
-        std::wstring ws_rom_path(path);
-        std::string rom_path(ws_rom_path.begin(), ws_rom_path.end());
-        // create a new emulator with the given ROM path
-        return new NES::Emulator(rom_path);
-    }
+PYBIND11_MODULE(lib_emu, m) {   
+    py::class_<NES::Emulator>(m, "NESEmulator")
+        .def(py::init<const std::string&>())
 
-    /// Return a pointer to a controller on the machine
-    EXP NES::NES_Byte* Controller(NES::Emulator* emu, int port) {
-        return emu->get_controller(port);
-    }
+        .def_property_readonly_static("width", [](py::object) { return NES::Emulator::WIDTH; })
+        .def_property_readonly_static("height", [](py::object) { return NES::Emulator::HEIGHT; })
+        .def_property_readonly_static("backup_slots", [](py::object) { return NES::Emulator::NUM_BACKUP_SLOTS; })
 
-    /// Return the pointer to the screen buffer
-    EXP NES::NES_Pixel* Screen(NES::Emulator* emu) {
-        return emu->get_screen_buffer();
-    }
+        .def("reset", &NES::Emulator::reset, "Reset the emulator")
+        .def("step", &NES::Emulator::step, "Perform a step on the emulator")
+        .def("backup", &NES::Emulator::backup, py::arg("slot"), "Backup the emulator state to the given slot")
+        .def("restore", &NES::Emulator::restore, py::arg("slot"), "Restore the emulator state from the given slot")
+        
+        .def(
+            "screen_buffer", 
+            [](NES::Emulator& emu) -> py::array_t<uint8_t> {
+                const int HEIGHT = NES::Emulator::HEIGHT;
+                const int WIDTH = NES::Emulator::WIDTH;
+                
+                #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+                    // On little-endian systems: BGRx -> RGB
+                    return py::array_t<uint8_t>(
+                        {HEIGHT, WIDTH, 3},                    // shape (3 channels)
+                        {WIDTH * 4, 4, -1},                   // negative stride to reverse BGR->RGB
+                        reinterpret_cast<uint8_t*>(emu.get_screen_buffer()) + 2,  // start at B
+                        py::capsule(emu.get_screen_buffer(), [](void*) {})  // capsule with data pointer
+                    );
+                #else
+                    // On big-endian systems: xRGB -> RGB
+                    return py::array_t<uint8_t>(
+                        {HEIGHT, WIDTH, 3},                    // shape (3 channels)
+                        {WIDTH * 4, 4, 1},                    // normal stride
+                        reinterpret_cast<uint8_t*>(emu.get_screen_buffer()) + 1,  // skip x
+                        py::capsule(emu.get_screen_buffer(), [](void*) {})  // capsule with data pointer
+                    );
+                #endif
+            }, 
+            "Get the screen buffer as a HEIGHT x WIDTH x 3 numpy.ndarray in RGB format"
+        )
 
-    /// Return the pointer to the memory buffer
-    EXP NES::NES_Byte* Memory(NES::Emulator* emu) {
-        return emu->get_memory_buffer();
-    }
+        .def(
+            "controller",
+            [](NES::Emulator& emu, int port) -> py::array_t<uint8_t> {
+                // Create a view of the controller buffer
+                return py::array_t<uint8_t>(
+                    {1},                                    // shape (1 controller)
+                    {1},                                    // stride (1 byte per controller)
+                    reinterpret_cast<uint8_t*>(emu.get_controller(port)),  // pointer to data
+                    py::capsule(emu.get_controller(port), [](void*) {})    // capsule with data pointer
+                );
+            },
+            py::arg("port"),
+            "Get the controller buffer as numpy.ndarray"
+        )
 
-    /// Reset the emulator
-    EXP void Reset(NES::Emulator* emu) {
-        emu->reset();
-    }
-
-    /// Perform a discrete step in the emulator (i.e., 1 frame)
-    EXP void Step(NES::Emulator* emu) {
-        emu->step();
-    }
-
-    /// Create a deep copy (i.e., a clone) of the given emulator
-    EXP void Backup(NES::Emulator* emu, int slot_id) {
-        emu->backup(slot_id);
-    }
-
-    /// Create a deep copy (i.e., a clone) of the given emulator
-    EXP void Restore(NES::Emulator* emu, int slot_id) {
-        emu->restore(slot_id);
-    }
-
-    /// Close the emulator, i.e., purge it from memory
-    EXP void Close(NES::Emulator* emu) {
-        delete emu;
-    }
-}
-
-// un-define the macro
-#undef EXP
+        .def(
+            "memory_buffer", 
+            [](NES::Emulator& emu) -> py::array_t<uint8_t> {
+                // Create a view of the RAM buffer (0x800 bytes)
+                return py::array_t<uint8_t>(
+                    {0x800},                               // shape (2048 bytes)
+                    {1},                                   // stride (1 byte)
+                    reinterpret_cast<uint8_t*>(emu.get_memory_buffer()),  // pointer to data
+                    py::capsule(emu.get_memory_buffer(), [](void*) {})    // capsule with data pointer
+                );
+            }, 
+            "Get the memory buffer as numpy.ndarray"
+        )
+    ;
+};

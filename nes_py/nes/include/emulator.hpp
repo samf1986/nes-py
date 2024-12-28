@@ -34,22 +34,13 @@ struct Core {
 
 /// An NES Emulator and OpenAI Gym interface
 class Emulator: public Core {
- private:
-    /// The number of cycles in 1 frame
-    static const int CYCLES_PER_FRAME = 29781;
-    /// the virtual cartridge with ROM and mapper data
-    Cartridge cartridge;
-    /// the 2 controllers on the emulator
-    Controller controllers[2];
-
-    // Backup slots
-    std::array<Core, 11> backup_slots;
-
  public:
     /// The width of the NES screen in pixels
     static const int WIDTH = SCANLINE_VISIBLE_DOTS;
     /// The height of the NES screen in pixels
     static const int HEIGHT = VISIBLE_SCANLINES;
+
+    static const int NUM_BACKUP_SLOTS = 32+1;
 
     /// Initialize a new emulator with a path to a ROM file.
     ///
@@ -98,6 +89,17 @@ class Emulator: public Core {
     inline void restore(int slot_id) {
         *static_cast<Core *>(this) = get_slot(slot_id);
     }
+
+ private:
+    /// The number of cycles in 1 frame
+    static const int CYCLES_PER_FRAME = 29781;
+    /// the virtual cartridge with ROM and mapper data
+    Cartridge cartridge;
+    /// the 2 controllers on the emulator
+    Controller controllers[2];
+
+    // Backup slots
+    std::array<Core, NUM_BACKUP_SLOTS> backup_slots;    
 };
 
 }  // namespace NES

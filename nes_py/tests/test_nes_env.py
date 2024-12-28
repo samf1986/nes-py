@@ -1,9 +1,11 @@
 """Test cases for the NESEnv class."""
 from unittest import TestCase
+
 import gym
 import numpy as np
-from .rom_file_abs_path import rom_file_abs_path
+
 from nes_py.nes_env import NESEnv
+from .rom_file_abs_path import rom_file_abs_path
 
 
 class ShouldRaiseTypeErrorOnInvalidROMPathType(TestCase):
@@ -87,9 +89,9 @@ class ShouldStepEnv(TestCase):
             # take a step and check the outputs
             output = env.step(action)
             self.assertIsInstance(output, tuple)
-            self.assertEqual(4, len(output))
+            self.assertEqual(5, len(output))
             # check each output
-            state, reward, done, info = output
+            state, reward, done, _,info = output
             self.assertIsInstance(state, np.ndarray)
             self.assertIsInstance(reward, float)
             self.assertIsInstance(done, bool)
@@ -110,7 +112,7 @@ class ShouldStepEnvBackupRestore(TestCase):
             if done:
                 state = env.reset()
                 done = False
-            state, _, done, _ = env.step(0)
+            state, _, done, _, _ = env.step(0)
 
         backup = state.copy()
 
@@ -120,7 +122,7 @@ class ShouldStepEnvBackupRestore(TestCase):
             if done:
                 state = env.reset()
                 done = False
-            state, _, done, _ = env.step(0)
+            state, _, done, _, _ = env.step(0)
 
         self.assertFalse(np.array_equal(backup, state))
         env._restore()

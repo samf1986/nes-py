@@ -4,17 +4,24 @@ Notes:
     - http://wiki.nesdev.com/w/index.php/INES
 """
 import os
+from typing import ClassVar
+from dataclasses import dataclass
+
 import numpy as np
 
 
-class ROM(object):
+@dataclass(frozen=True)
+class ROM:
     """An abstraction of the NES Read-Only Memory (ROM)."""
 
-    # the magic bytes expected at the first four bytes of the header.
+    # The magic bytes expected at the first four bytes of the header.
     # It spells "NES<END>"
-    _MAGIC = np.array([0x4E, 0x45, 0x53, 0x1A])
+    MAGIC: ClassVar[np.ndarray] = np.array([0x4E, 0x45, 0x53, 0x1A], dtype=np.uint8)
+    raw_data: np.ndarray
+    
 
-    def __init__(self, rom_path):
+    @classmethod
+    def from_path(cls, rom_path: str) -> 'ROM':
         """
         Initialize a new ROM.
 
@@ -28,22 +35,27 @@ class ROM(object):
         # make sure the rom path is a string
         if not isinstance(rom_path, str):
             raise TypeError('rom_path must be of type: str.')
+        
         # make sure the rom path exists
         if not os.path.exists(rom_path):
             msg = 'rom_path points to non-existent file: {}.'.format(rom_path)
             raise ValueError(msg)
-        # read the binary data in the .nes ROM file
-        self.raw_data = np.fromfile(rom_path, dtype='uint8')
+        
+        # Load the binary data in the .nes ROM file
+        rom = cls(raw_data=np.fromfile(rom_path, dtype='uint8'))
+        
         # ensure the first 4 bytes are 0x4E45531A (NES<EOF>)
-        if not np.array_equal(self._magic, self._MAGIC):
+        if not np.array_equal(rom.header[:4], cls.MAGIC):
             raise ValueError('ROM missing magic number in header.')
-        if self._zero_fill != 0:
+        
+        if rom.header[11:].sum() != 0:
             raise ValueError("ROM header zero fill bytes are not zero.")
+        
+        return rom
 
     #
     # MARK: Header
     #
-
     @property
     def header(self):
         """Return the header of the ROM file as bytes."""
@@ -57,12 +69,12 @@ class ROM(object):
     @property
     def prg_rom_size(self):
         """Return the size of the PRG ROM in KB."""
-        return 16 * self.header[4]
+        return 16 * int(self.header[4])
 
     @property
     def chr_rom_size(self):
         """Return the size of the CHR ROM in KB."""
-        return 8 * self.header[5]
+        return 8 * int(self.header[5])
 
     @property
     def flags_6(self):

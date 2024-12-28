@@ -16,14 +16,14 @@ class ShouldNotCreateInstanceOfROMWithoutPath(TestCase):
 
 class ShouldNotCreateInstanceOfROMWithInvaldPath(TestCase):
     def test(self):
-        self.assertRaises(TypeError, lambda: ROM(5))
-        self.assertRaises(ValueError, lambda: ROM('not a path'))
+        self.assertRaises(TypeError, lambda: ROM.from_path(5))
+        self.assertRaises(ValueError, lambda: ROM.from_path('not a path'))
 
 
 class ShouldNotCreateInstanceOfROMWithInvaldROMFile(TestCase):
     def test(self):
         empty = rom_file_abs_path('empty.nes')
-        self.assertRaises(ValueError, lambda: ROM(empty))
+        self.assertRaises(ValueError, lambda: ROM.from_path(empty))
 
 
 #
@@ -91,7 +91,7 @@ class ShouldReadROMHeaderTestCase(object):
     def setUp(self):
         """Perform setup before each test."""
         rom_path = rom_file_abs_path(self.rom_name)
-        self.rom = ROM(rom_path)
+        self.rom = ROM.from_path(rom_path)
 
     def test_header_length(self):
         """Check the length of the header."""

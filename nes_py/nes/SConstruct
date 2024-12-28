@@ -27,5 +27,6 @@ ENV = Environment(
 
 # Locate all the C++ source files
 SRC = Glob('build/*.cpp') + Glob('build/*/*.cpp')
+
 # Create a shared library (it will add "lib" to the front automatically)
-ENV.SharedLibrary('_nes_env.so', SRC)
+ENV.SharedLibrary('_emu.so', SRC)
