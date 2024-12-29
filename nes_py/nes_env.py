@@ -189,8 +189,7 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
 
         """
         # Set the seed.
-        if seed is not None:
-            self.seed(seed)
+        super().seed(seed)
 
         # call the before reset callback
         self._will_reset()
