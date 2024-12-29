@@ -48,7 +48,7 @@ def play_human(env: gym.Env, callback=None) -> None:
     # create a done flag for the environment
     done = True
     # prepare frame rate limiting
-    target_frame_duration = 1 / env.metadata['video.frames_per_second']
+    target_frame_duration = 1 / env.metadata['render_fps']
     last_frame_time = 0
     # start the main game loop
     try:

@@ -24,7 +24,8 @@ from nes_py._image_viewer import ImageViewer
 @dataclass(init=False)
 class NESEmulatorWrapper:    
     _has_backup: bool
-    _emulator: NESEmulator    
+    _rom_path: str
+    _emulator: NESEmulator        
 
     height: int = NESEmulator.height
     width: int = NESEmulator.width
@@ -34,6 +35,7 @@ class NESEmulatorWrapper:
         NESEmulatorWrapper.check_rom_compatibility(ROM.from_path(rom_path))
         
         self._has_backup = False
+        self._rom_path = rom_path
         self._emulator = NESEmulator(rom_path)
         
     @staticmethod
@@ -73,6 +75,10 @@ class NESEmulatorWrapper:
     @property
     def _controller_buffers(self) -> List[np.ndarray]:
         return [self._emulator.controller(port) for port in range(2)]
+    
+    @property
+    def screen(self) -> np.ndarray:
+        return self._screen_buffer
     
        
     def _backup(self, slot_id: int = -1):
@@ -307,8 +313,8 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
                 # create the ImageViewer to display frames
                 self._viewer = ImageViewer(
                     caption=caption,
-                    height=self._emulator.height(),
-                    width=self._emulator.width(),
+                    height=self._emulator.height,
+                    width=self._emulator.width,
                 )
             # show the _screen_buffer on the image viewer
             self._viewer.show(self._screen_buffer)
