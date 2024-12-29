@@ -3,6 +3,6 @@ requires = [
     "wheel",
     "setuptools>=45.0.0",    
     "pybind11>=2.10.0",
-    "numpy>=1.18.5"  # If you need numpy during build
+    "numpy<3"
 ]
 build-backend = "setuptools.build_meta" 

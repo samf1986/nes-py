@@ -77,9 +77,12 @@ class NESEmulatorWrapper:
         return [self._emulator.controller(port) for port in range(2)]
     
     @property
-    def screen(self) -> np.ndarray:
-        return self._screen_buffer
+    def ram(self) -> np.ndarray:
+        return self._memory_buffer
     
+    @property
+    def screen(self) -> np.ndarray:
+        return self._screen_buffer    
        
     def _backup(self, slot_id: int = -1):
         if slot_id < -1 or slot_id > self.backup_slots:

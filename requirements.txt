@@ -3,7 +3,7 @@ wheel
 pybind11>=2.10.0
 setuptools>=45.0.0
 gymnasium==1.0.0
-numpy>=1.18.5
+numpy<3
 pyglet<=2.0.1,>=1.4.0
 tqdm>=4.48.2
 twine>=1.11.0
