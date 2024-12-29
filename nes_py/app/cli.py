@@ -1,8 +1,9 @@
 """Command line interface to nes-py NES emulator."""
 import argparse
-from .play_human import play_human
-from .play_random import play_random
-from ..nes_env import NESEnv
+from nes_py.nes_env import NESEnv
+from nes_py.app.play_human import play_human
+from nes_py.app.play_random import play_random
+
 
 
 def _get_args():

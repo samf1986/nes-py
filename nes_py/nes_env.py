@@ -7,6 +7,7 @@ from typing import Tuple
 from typing import Union
 from typing import ClassVar
 from typing import Optional
+from typing import NamedTuple
 from typing import SupportsFloat
 from dataclasses import dataclass
 
@@ -137,6 +138,14 @@ class NESGameCallbacks:
         return {}
 
 
+class StepResult(NamedTuple):
+    observation: np.ndarray
+    reward: float
+    terminated: bool
+    truncated: bool
+    info: Dict[str, Any]
+
+
 @dataclass(init=False)
 class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
     """An NES environment based on the LaiNES emulator."""
@@ -246,7 +255,13 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
         self._did_step(self._done)
 
         # return the _screen_buffer from the emulator and other relevant data
-        return self._screen_buffer, reward, self._done, False, info
+        return StepResult(
+            observation=self._screen_buffer,
+            reward=reward,
+            terminated=self._done,
+            truncated=False,
+            info=info
+        )
 
 
     def close(self):

@@ -1,8 +1,9 @@
 """Methods for playing the game randomly, or as a human."""
 from tqdm import tqdm
+import gymnasium as gym
 
 
-def play_random(env, steps):
+def play_random(env: gym.Env, steps: int) -> None:
     """
     Play the environment making uniformly random decisions.
 
@@ -21,7 +22,9 @@ def play_random(env, steps):
             if done:
                 _ = env.reset()
             action = env.action_space.sample()
-            _, reward, done, info = env.step(action)
+            _, reward, terminated, truncated, info = env.step(action)
+            done = terminated or truncated
+            
             progress.set_postfix(reward=reward, info=info)
             env.render()
     except KeyboardInterrupt:

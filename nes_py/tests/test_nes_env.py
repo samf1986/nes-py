@@ -81,21 +81,26 @@ class ShouldStepEnv(TestCase):
         for _ in range(500):
             if done:
                 # reset the environment and check the output value
-                state, _ = env.reset()
-                self.assertIsInstance(state, np.ndarray)
+                observation, _ = env.reset()
+                self.assertIsInstance(observation, np.ndarray)
+
             # sample a random action and check it
             action = env.action_space.sample()
             self.assertIsInstance(action, (int, np.integer))
+            
             # take a step and check the outputs
             output = env.step(action)
             self.assertIsInstance(output, tuple)
             self.assertEqual(5, len(output))
+            
             # check each output
-            state, reward, done, _,info = output
-            self.assertIsInstance(state, np.ndarray)
+            observation, reward, terminated, truncated, info = output
+            self.assertIsInstance(observation, np.ndarray)
             self.assertIsInstance(reward, float)
-            self.assertIsInstance(done, bool)
+            self.assertIsInstance(terminated, bool)
+            self.assertIsInstance(truncated, bool)
             self.assertIsInstance(info, dict)
+            
             # check the render output
             render = env.render('rgb_array')
             self.assertIsInstance(render, np.ndarray)
@@ -122,7 +127,8 @@ class ShouldStepEnvBackupRestore(TestCase):
             if done:
                 state = env.reset()
                 done = False
-            state, _, done, _, _ = env.step(0)
+            _, _, terminated, truncated, _ = env.step(0)
+            done = terminated or truncated
 
         self.assertFalse(np.array_equal(backup, state))
         env._restore()
