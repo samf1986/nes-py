@@ -3,12 +3,17 @@ set -e
 
 export UV_PYTHON_PREFERENCE=only-managed
 
+if command -v uv &> /dev/null
+then
+    curl -LsSf https://astral.sh/uv/install.sh | sh    
+fi
+
 for py_ver in 3.{8,9,10,11,12,13}
 do
     env_name=".pyenvs/${py_ver//.}"
     uv venv -p $py_ver $env_name
     source $env_name/bin/activate
-    uv pip install pip pybind11 scons setuptools wheel -r requirements.txt
-    make 
+    uv pip install pip -r requirements.txt
+    make deployment
     deactivate
 done

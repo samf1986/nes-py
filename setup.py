@@ -1,12 +1,40 @@
 """The setup script for installing and distributing the nes-py package."""
 import os
+import subprocess
 from glob import glob
 from typing import List
+from pathlib import Path
 
 import pybind11
-from setuptools import setup
 from setuptools import find_packages
+from setuptools import setup
+from setuptools.command.build_ext import build_ext
 from pybind11.setup_helpers import Pybind11Extension
+
+
+class MakeBuilder(build_ext):
+    """Custom builder that uses Make."""
+    
+    def build_extension(self, ext: Pybind11Extension) -> None:
+        """Build the extension using Make."""
+        extension_path: str = os.path.dirname(ext.sources[0])
+        make_path: str = os.path.join(extension_path, '..')
+        
+        try:
+            subprocess.check_call(['make', '-C', make_path])
+            
+            built_lib: str = os.path.join(make_path, 'libemulator.so')
+            target_lib: str = self.get_ext_fullpath(ext.name)
+            
+            if os.path.exists(built_lib):
+                os.makedirs(os.path.dirname(target_lib), exist_ok=True)
+                import shutil
+                shutil.copy2(built_lib, target_lib)
+            else:
+                raise RuntimeError(f'Built library not found at {built_lib}')
+                
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f'Error building extension: {e}')
 
 
 def read_readme() -> str:
@@ -17,10 +45,7 @@ def read_readme() -> str:
 
 def get_source_files() -> List[str]:
     """Get all C++ source files needed for compilation."""
-    return (
-        glob('nes_py/nes/src/*.cpp') + 
-        glob('nes_py/nes/src/mappers/*.cpp')
-    )
+    return glob('nes_py/nes/src/*.cpp') + glob('nes_py/nes/src/mappers/*.cpp')
 
 
 def configure_compiler() -> None:
@@ -31,27 +56,28 @@ def configure_compiler() -> None:
 
 def get_extension_modules() -> List[Pybind11Extension]:
     """Create and return the extension modules configuration."""
-    # Get all source files
-    sources = get_source_files()  # This already includes all .cpp files
+    sources: List[str] = get_source_files()
     
     return [
         Pybind11Extension(
-            'nes_py.lib_emu',
-            sources,  # Include all source files
+            name='nes_py.emulator',
+            sources=sources,
             include_dirs=[
                 'nes_py/nes/include',
                 'nes_py/nes/src',
                 pybind11.get_include(),
                 pybind11.get_include(user=True)
             ],
-            cxx_std=11,
+            cxx_std=14,
+            extra_compile_args=['-O3', '-Wall', '-Wextra', '-pedantic'],
         ),
     ]
 
+
 def get_requirements() -> List[str]:
-    """Get the requirements for the package."""
+    """Get the requirements for the package."""    
     with open('requirements.txt') as f:
-        return list(map(str.strip, f.read().splitlines()))
+        return [line.strip() for line in f]
 
 
 def main() -> None:
@@ -75,7 +101,6 @@ def main() -> None:
             'Operating System :: Microsoft :: Windows',
             'Programming Language :: C++',
             'Programming Language :: Python :: 3 :: Only',
-            'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
@@ -91,6 +116,7 @@ def main() -> None:
         author_email='kautencreations@gmail.com',
         license='MIT',
         packages=find_packages(exclude=['tests', '*.tests', '*.tests.*']),
+        package_data={'nes_py': ['../requirements.txt']},
         ext_modules=get_extension_modules(),
         zip_safe=False,
         install_requires=get_requirements(),
@@ -108,6 +134,7 @@ def main() -> None:
             ],
         },
         python_requires='>=3.8',
+        cmdclass={'build_ext': MakeBuilder},
     )
 
 

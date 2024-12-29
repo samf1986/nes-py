@@ -16,7 +16,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(lib_emu, m) {   
+PYBIND11_MODULE(emulator, m) {   
     py::class_<NES::Emulator>(m, "NESEmulator")
         .def(py::init<const std::string&>())
 

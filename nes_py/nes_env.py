@@ -16,7 +16,7 @@ from gymnasium.spaces import Box
 from gymnasium.spaces import Discrete
 
 from nes_py._rom import ROM
-from nes_py.lib_emu import NESEmulator
+from nes_py.emulator import NESEmulator
 from nes_py._image_viewer import ImageViewer
 
 
@@ -189,7 +189,7 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
 
         """
         # Set the seed.
-        super().seed(seed)
+        super().reset(seed=seed)
 
         # call the before reset callback
         self._will_reset()

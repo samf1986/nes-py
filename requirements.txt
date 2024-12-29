@@ -1,7 +1,7 @@
-SCons==4.8.1
+build
+wheel
 pybind11>=2.10.0
 setuptools>=45.0.0
-wheel
 gymnasium==1.0.0
 numpy>=1.18.5
 pyglet<=2.0.1,>=1.4.0

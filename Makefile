@@ -6,11 +6,11 @@ all: test deployment
 
 # build the LaiNES CPP code
 lib_emu:
-	$(SCONS) -C nes_py/nes -j $(shell nproc)
-	mv nes_py/nes/lib_emu*.so nes_py
+	$(MAKE) -j8 -C nes_py/nes
+	mv nes_py/nes/libemulator.so nes_py/emulator.so
 
 install: lib_emu
-	$(PYTHON) -m pip install .
+	uv pip install .
 
 # run the Python test suite
 test: install
@@ -18,16 +18,17 @@ test: install
 
 # clean the build directory
 clean:
+	$(MAKE) -C nes_py/nes clean
 	rm -rf build/ .eggs/ *.egg-info/ || true
 	find . -name "*.pyc" -delete
 	find . -name "__pycache__" -delete
 	find . -name ".sconsign.dblite" -delete
 	find . -name "build" | rm -rf
-	find . -name "lib_emu.so" -delete
+	find . -name "emulator.so" -delete
 
 # build the deployment package
 deployment: clean 
-	$(PYTHON) setup.py sdist bdist_wheel
+	$(PYTHON) -m build
 
 # ship the deployment package to PyPi
 ship: test deployment
