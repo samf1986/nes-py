@@ -147,7 +147,7 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
     # relevant meta-data about the environment
     metadata: ClassVar[Dict[str, Any]] = {
         'render.modes': ['rgb_array', 'human'],
-        'video.frames_per_second': 60
+        'render_fps': 60
     }
 
     # the legal range for rewards for this environment
