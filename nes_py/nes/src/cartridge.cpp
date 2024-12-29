@@ -4,7 +4,6 @@
 //
 //  Copyright (c) 2019 Christian Kauten. All rights reserved.
 //
-#include <iostream>
 #include <fstream>
 #include "cartridge.hpp"
 #include "log.hpp"

@@ -1,5 +1,5 @@
+UV ?= $(shell which uv)
 PYTHON ?= $(shell which python3)
-SCONS ?= $(shell which scons)
 
 # build everything
 all: test deployment
@@ -9,8 +9,8 @@ lib_emu:
 	$(MAKE) -j8 -C nes_py/nes
 	mv nes_py/nes/libemulator.so nes_py/emulator.so
 
-install: lib_emu
-	uv pip install .
+install:
+	$(UV) pip install .
 
 # run the Python test suite
 test: install
@@ -28,7 +28,7 @@ clean:
 
 # build the deployment package
 deployment: clean 
-	$(PYTHON) -m build
+	$(UV) build
 
 # ship the deployment package to PyPi
 ship: test deployment
@@ -37,4 +37,4 @@ ship: test deployment
 # Show configuration
 show-config:
 	@echo "Python path: $(PYTHON)"
-	@echo "SCons command: $(SCONS)"
+	@echo "UV command: $(UV)"
