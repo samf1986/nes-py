@@ -1,8 +1,8 @@
 """Test cases for the NESEnv class."""
 from unittest import TestCase
 
-import gym
 import numpy as np
+import gymnasium as gym
 
 from nes_py.nes_env import NESEnv
 from .rom_file_abs_path import rom_file_abs_path
@@ -59,9 +59,9 @@ class ShouldReadAndWriteMemory(TestCase):
         for _ in range(90):
             env.step(8)
             env.step(0)
-        self.assertEqual(129, env.ram[0x0776])
-        env.ram[0x0776] = 0
-        self.assertEqual(0, env.ram[0x0776])
+        self.assertEqual(129, env._memory_buffer[0x0776])
+        env._memory_buffer[0x0776] = 0
+        self.assertEqual(0, env._memory_buffer[0x0776])
         env.close()
 
 
@@ -81,11 +81,11 @@ class ShouldStepEnv(TestCase):
         for _ in range(500):
             if done:
                 # reset the environment and check the output value
-                state = env.reset()
+                state, _ = env.reset()
                 self.assertIsInstance(state, np.ndarray)
             # sample a random action and check it
             action = env.action_space.sample()
-            self.assertIsInstance(action, int)
+            self.assertIsInstance(action, (int, np.integer))
             # take a step and check the outputs
             output = env.step(action)
             self.assertIsInstance(output, tuple)
@@ -126,5 +126,5 @@ class ShouldStepEnvBackupRestore(TestCase):
 
         self.assertFalse(np.array_equal(backup, state))
         env._restore()
-        self.assertTrue(np.array_equal(backup, env.screen))
+        self.assertTrue(np.array_equal(backup, env._screen_buffer))
         env.close()

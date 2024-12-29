@@ -4,55 +4,145 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Tuple
+from typing import Union
 from typing import ClassVar
 from typing import Optional
+from typing import SupportsFloat
 from dataclasses import dataclass
 
-import gym
 import numpy as np
-from gym.spaces import Box
-from gym.spaces import Discrete
+import gymnasium as gym
+from gymnasium.spaces import Box
+from gymnasium.spaces import Discrete
 
 from nes_py._rom import ROM
 from nes_py.lib_emu import NESEmulator
 from nes_py._image_viewer import ImageViewer
 
 
+@dataclass(init=False)
+class NESEmulatorWrapper:    
+    _has_backup: bool
+    _emulator: NESEmulator    
 
-def check_rom_compatibility(rom: ROM):
-    """Check that the ROM is compatible with the NES environment."""
-    # check that there is PRG ROM
-    if rom.prg_rom_size == 0:
-        raise ValueError('ROM has no PRG-ROM banks.')
+    height: int = NESEmulator.height
+    width: int = NESEmulator.width
+    backup_slots: int = NESEmulator.backup_slots-1
 
-    # ensure that there is no trainer
-    if rom.has_trainer:
-        raise ValueError('ROM has trainer. trainer is not supported.')
+    def __init__(self, rom_path: str):    
+        NESEmulatorWrapper.check_rom_compatibility(ROM.from_path(rom_path))
         
-    # try to read the PRG ROM and raise a value error if it fails
-    _ = rom.prg_rom
+        self._has_backup = False
+        self._emulator = NESEmulator(rom_path)
+        
+    @staticmethod
+    def check_rom_compatibility(rom: ROM):
+        """Check that the ROM is compatible with the NES environment."""
+        # check that there is PRG ROM
+        if rom.prg_rom_size == 0:
+            raise ValueError('ROM has no PRG-ROM banks.')
 
-    # try to read the CHR ROM and raise a value error if it fails
-    _ = rom.chr_rom      
+        # ensure that there is no trainer
+        if rom.has_trainer:
+            raise ValueError('ROM has trainer. trainer is not supported.')
+            
+        # try to read the PRG ROM and raise a value error if it fails
+        _ = rom.prg_rom
 
-    # check the TV system
-    if rom.is_pal:
-        raise ValueError('ROM is PAL. PAL is not supported.')
-    # check that the mapper is implemented
-    elif rom.mapper not in {0, 1, 2, 3}:
-        msg = 'ROM has an unsupported mapper number {}. please see https://github.com/Kautenja/nes-py/issues/28 for more information.'
-        raise ValueError(msg.format(rom.mapper))          
+        # try to read the CHR ROM and raise a value error if it fails
+        _ = rom.chr_rom      
+
+        # check the TV system
+        if rom.is_pal:
+            raise ValueError('ROM is PAL. PAL is not supported.')
+        # check that the mapper is implemented
+        elif rom.mapper not in {0, 1, 2, 3}:
+            msg = 'ROM has an unsupported mapper number {}. please see https://github.com/Kautenja/nes-py/issues/28 for more information.'
+            raise ValueError(msg.format(rom.mapper))          
+        
+
+    @property
+    def _screen_buffer(self) -> np.ndarray:
+        return self._emulator.screen_buffer()
+
+    @property
+    def _memory_buffer(self) -> np.ndarray:
+        return self._emulator.memory_buffer()
+    
+    @property
+    def _controller_buffers(self) -> List[np.ndarray]:
+        return [self._emulator.controller(port) for port in range(2)]
+    
+       
+    def _backup(self, slot_id: int = -1):
+        if slot_id < -1 or slot_id > self.backup_slots:
+            raise RuntimeError(f'Only {self.backup_slots} backup slots available')
+
+        self._emulator.backup(slot_id)
+        self._has_backup = True
+
+    def _restore(self, slot_id: int = -1):
+        if slot_id < -1 or slot_id > self.backup_slots:
+            raise RuntimeError(f'Only {self.backup_slots} backup slots available')
+
+        self._emulator.restore(slot_id) 
+
+    def frame_advance(self, action: Union[int, Tuple[int, int]]) -> None:
+        """
+        Advance a frame in the emulator with an action.
+
+        Args:
+            action (byte): the action to press on the joy-pad
+
+        Returns:
+            None
+
+        """
+        # set the action on the controller
+        if isinstance(action, (int, np.integer)):
+            self._controller_buffers[0][:] = action
+        elif isinstance(action, tuple) and len(action) == 2:
+            self._controller_buffers[0][:] = action[0]
+            self._controller_buffers[1][:] = action[1]
+        else:
+            raise ValueError(f'Invalid action type or length: {type(action)}')
+
+        # perform a step on the emulator
+        self._emulator.step()        
+
+
+class NESGameCallbacks:
+    def _will_reset(self):
+        """Handle any RAM hacking after a reset occurs."""
+        pass
+
+    def _did_reset(self):
+        """Handle any RAM hacking after a reset occurs."""
+        pass
+
+    def _did_step(self, done: bool):
+        """Handle any RAM hacking after a step occurs."""
+        pass    
+
+    def _get_reward(self) -> float:
+        """Return the reward after a step occurs."""
+        return 0
+
+    def _get_done(self) -> bool:
+        """Return True if the episode is over, False otherwise."""
+        return False
+
+    def _get_info(self) -> Dict[str, Any]:
+        """Return the info after a step occurs."""
+        return {}
 
 
 @dataclass(init=False)
-class NESEnv(gym.Env):
+class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
     """An NES environment based on the LaiNES emulator."""
-    done: bool    
-    viewer: Optional[ImageViewer]
-    np_random: np.random.RandomState
-    _emulator: NESEmulator
-    _rom_path: str
-    _has_backup: bool
+    _done: bool    
+    _viewer: Optional[ImageViewer]
+    _np_random: np.random.RandomState
 
     # relevant meta-data about the environment
     metadata: ClassVar[Dict[str, Any]] = {
@@ -74,106 +164,33 @@ class NESEnv(gym.Env):
     # action space is a bitmap of button press values for the 8 NES buttons
     action_space: ClassVar[Discrete] = Discrete(256)
 
-    def __init__(self, rom_path: str):
-        super().__init__()
-        check_rom_compatibility(ROM.from_path(rom_path))
+    def __init__(self, rom_path: str):        
+        super().__init__(rom_path)
 
-        self._rom_path = rom_path
-        self._emulator = NESEmulator(self._rom_path)
-        self._np_random = np.random.RandomState()
-        self.viewer = None
-        self.done = True
-        self._has_backup = False
-
-    @property
-    def screen(self) -> np.ndarray:
-        return self._emulator.screen_buffer()
-
-    @property
-    def ram(self) -> np.ndarray:
-        return self._emulator.memory_buffer()    
-    
-    @property
-    def controllers(self) -> List[np.ndarray]:
-        return [self._emulator.controller(port) for port in range(2)]
-    
-    @property
-    def backup_slots(self) -> int:
-        return self._emulator.backup_slots
+        self._viewer = None
+        self._done = True
 
 
-    def _frame_advance(self, action):
-        """
-        Advance a frame in the emulator with an action.
-
-        Args:
-            action (byte): the action to press on the joy-pad
-
-        Returns:
-            None
-
-        """
-        # set the action on the controller
-        self.controllers[0][:] = action
-
-        # perform a step on the emulator
-        self._emulator.step()
-
-
-    def _backup(self, slot_id: int = -1):
-        """Backup the NES state in the emulator."""
-        if slot_id < -1 or slot_id > self.backup_slots:
-            raise RuntimeError(f'Only {self.backup_slots} backup slots available')
-
-        self._emulator.backup(slot_id)
-        self._has_backup = True
-
-    def _restore(self, slot_id: int = -1):
-        """Restore the backup state into the NES emulator."""
-        if slot_id < -1 or slot_id > self.backup_slots:
-            raise RuntimeError(f'Only {self.backup_slots} backup slots available')
-
-        self._emulator.restore(slot_id)
-
-    def _will_reset(self):
-        """Handle any RAM hacking after a reset occurs."""
-        pass
-
-    def seed(self, seed=None):
-        """
-        Set the seed for this environment's random number generator.
-
-        Returns:
-            list<bigint>: Returns the list of seeds used in this env's random
-              number generators. The first value in the list should be the
-              "main" seed, or the value which a reproducer should pass to
-              'seed'. Often, the main seed equals the provided 'seed', but
-              this won't be true if seed=None, for example.
-
-        """
-        # if there is no seed, return an empty list
-        if seed is None:
-            return []
-        # set the random number seed for the NumPy random number generator
-        self.np_random.seed(seed)
-        # return the list of seeds used by RNG(s) in the environment
-        return [seed]
-
-    def reset(self, seed=None, options=None, return_info=None):
+    def reset(
+        self,
+        *,
+        seed: Union[int, None] = None,
+        options: Union[Dict[str, Any], None] = None,            
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
         """
         Reset the state of the environment and returns an initial observation.
 
         Args:
             seed (int): an optional random number seed for the next episode
             options (any): unused
-            return_info (any): unused
 
         Returns:
             state (np.ndarray): next frame as a result of the given action
 
         """
         # Set the seed.
-        self.seed(seed)
+        if seed is not None:
+            self.seed(seed)
 
         # call the before reset callback
         self._will_reset()
@@ -188,24 +205,13 @@ class NESEnv(gym.Env):
         self._did_reset()
 
         # set the done flag to false
-        self.done = False
+        self._done = False
 
-        # return the screen from the emulator
-        return self.screen
+        # return the _screen_buffer from the emulator
+        return self._screen_buffer, {}
 
-    def snapshot(self, slot_id: int):
-        self._backup(slot_id)
 
-    def restore_snapshot(self, slot_id: int):
-        self._restore(slot_id)
-        self._did_reset()
-        self.done = False
-
-    def _did_reset(self):
-        """Handle any RAM hacking after a reset occurs."""
-        pass
-
-    def step(self, action):
+    def step(self, action: int) -> Tuple[np.ndarray, SupportsFloat, bool, bool, Dict[str, Any]]:
         """
         Run one frame of the NES and return the relevant observation data.
 
@@ -217,71 +223,48 @@ class NESEnv(gym.Env):
             - state (np.ndarray): next frame as a result of the given action
             - reward (float) : amount of reward returned after given action
             - done (boolean): whether the episode has ended
+            - truncated (boolean): whether the episode has been truncated
             - info (dict): contains auxiliary diagnostic information
 
         """
         # if the environment is done, raise an error
-        if self.done:
+        if self._done:
             raise ValueError('cannot step in a done environment! call `reset`')
         
-        self._frame_advance(action)
+        self.frame_advance(action)
 
         # get the reward for this step
         reward = float(self._get_reward())
+        reward = min(max(reward, self.reward_range[0]), self.reward_range[1])
 
         # get the done flag for this step
-        self.done = bool(self._get_done())
+        self._done = bool(self._get_done())
 
         # get the info for this step
         info = self._get_info()
 
         # call the after step callback
-        self._did_step(self.done)
-        # bound the reward in [min, max]
-        if reward < self.reward_range[0]:
-            reward = self.reward_range[0]
-        elif reward > self.reward_range[1]:
-            reward = self.reward_range[1]
-        # return the screen from the emulator and other relevant data
-        return self.screen, reward, self.done, False, info
+        self._did_step(self._done)
 
-    def _get_reward(self):
-        """Return the reward after a step occurs."""
-        return 0
+        # return the _screen_buffer from the emulator and other relevant data
+        return self._screen_buffer, reward, self._done, False, info
 
-    def _get_done(self):
-        """Return True if the episode is over, False otherwise."""
-        return False
-
-    def _get_info(self):
-        """Return the info after a step occurs."""
-        return {}
-
-    def _did_step(self, done):
-        """
-        Handle any RAM hacking after a step occurs.
-
-        Args:
-            done (bool): whether the done flag is set to true
-
-        Returns:
-            None
-
-        """
-        pass
 
     def close(self):
         """Close the environment."""
         # make sure the environment hasn't already been closed
         if self._emulator is None:
             raise ValueError('env has already been closed.')
+        
         # purge the environment from C++ memory
         del self._emulator
+
         # deallocate the object locally
         self._emulator = None
+
         # if there is an image viewer open, delete it
-        if self.viewer is not None:
-            self.viewer.close()
+        if self._viewer is not None:
+            self._viewer.close()
 
     def render(self, mode='human'):
         """
@@ -299,7 +282,7 @@ class NESEnv(gym.Env):
         """
         if mode == 'human':
             # if the viewer isn't setup, import it and create one
-            if self.viewer is None:
+            if self._viewer is None:
                 # get the caption for the ImageViewer
                 if self.spec is None:
                     # if there is no spec, just use the .nes filename
@@ -308,15 +291,15 @@ class NESEnv(gym.Env):
                     # set the caption to the OpenAI Gym id
                     caption = self.spec.id
                 # create the ImageViewer to display frames
-                self.viewer = ImageViewer(
+                self._viewer = ImageViewer(
                     caption=caption,
                     height=self._emulator.height(),
                     width=self._emulator.width(),
                 )
-            # show the screen on the image viewer
-            self.viewer.show(self.screen)
+            # show the _screen_buffer on the image viewer
+            self._viewer.show(self._screen_buffer)
         elif mode == 'rgb_array':
-            return self.screen
+            return self._screen_buffer
         else:
             # unpack the modes as comma delineated strings ('a', 'b', ...)
             render_modes = [repr(x) for x in self.metadata['render.modes']]

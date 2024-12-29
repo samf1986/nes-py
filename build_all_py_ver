@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+
+export UV_PYTHON_PREFERENCE=only-managed
+
+for py_ver in 3.{8,9,10,11,12,13}
+do
+    env_name=".pyenvs/${py_ver//.}"
+    uv venv -p $py_ver $env_name
+    source $env_name/bin/activate
+    uv pip install pip pybind11 scons setuptools wheel -r requirements.txt
+    make 
+    deactivate
+done

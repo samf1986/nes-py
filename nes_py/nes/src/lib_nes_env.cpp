@@ -2,6 +2,8 @@
 //  File:         lib_nes_env.cpp
 //  Description:  file describes the outward facing ctypes API for Python
 //
+//  CHANGELOG:    - 2024-12-28: Changed from ctypes to pybind11 - Ali Mosavian
+//
 //  Copyright (c) 2019 Christian Kauten. All rights reserved.
 //
 #include "common.hpp"

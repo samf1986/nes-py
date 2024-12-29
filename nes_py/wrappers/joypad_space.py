@@ -1,14 +1,18 @@
 """An environment wrapper to convert binary to discrete action space."""
-import gym
-from gym import Env
-from gym import Wrapper
+from typing import Dict
+from typing import SupportsFloat
+from typing import ClassVar
+
+import gymnasium as gym
+from gymnasium import Env
+from gymnasium import Wrapper
 
 
 class JoypadSpace(Wrapper):
     """An environment wrapper to convert binary to discrete action space."""
 
     # a mapping of buttons to binary values
-    _button_map = {
+    _button_map: ClassVar[Dict[str, int]] = {
         'right':  0b10000000,
         'left':   0b01000000,
         'down':   0b00100000,

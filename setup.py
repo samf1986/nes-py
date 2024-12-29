@@ -48,6 +48,11 @@ def get_extension_modules() -> List[Pybind11Extension]:
         ),
     ]
 
+def get_requirements() -> List[str]:
+    """Get the requirements for the package."""
+    with open('requirements.txt') as f:
+        return list(map(str.strip, f.read().splitlines()))
+
 
 def main() -> None:
     """Main setup configuration."""
@@ -55,7 +60,7 @@ def main() -> None:
     
     setup(
         name='nes_py',
-        version='8.2.1',
+        version='9.0.0',
         description='An NES Emulator and OpenAI Gym interface',
         long_description=read_readme(),
         long_description_content_type='text/markdown',
@@ -70,13 +75,13 @@ def main() -> None:
             'Operating System :: Microsoft :: Windows',
             'Programming Language :: C++',
             'Programming Language :: Python :: 3 :: Only',
-            'Programming Language :: Python :: 3.5',
-            'Programming Language :: Python :: 3.6',
             'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: 3.11',
+            'Programming Language :: Python :: 3.12',
+            'Programming Language :: Python :: 3.13',
             'Topic :: Games/Entertainment',
             'Topic :: Software Development :: Libraries :: Python Modules',
             'Topic :: System :: Emulators',
@@ -88,13 +93,7 @@ def main() -> None:
         packages=find_packages(exclude=['tests', '*.tests', '*.tests.*']),
         ext_modules=get_extension_modules(),
         zip_safe=False,
-        install_requires=[
-            'pybind11>=2.10.0',
-            'gym>=0.17.2',
-            'numpy>=1.18.5',
-            'tqdm>=4.48.2',
-            'pyglet>=1.5.21,<2.0.1',
-        ],
+        install_requires=get_requirements(),
         extras_require={
             'dev': [
                 'pytest>=7.0.0',
@@ -108,7 +107,7 @@ def main() -> None:
                 'nes_py=nes_py.app.cli:main',
             ],
         },
-        python_requires='>=3.5',
+        python_requires='>=3.8',
     )
 
 

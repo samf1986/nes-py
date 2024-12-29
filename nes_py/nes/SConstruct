@@ -1,18 +1,28 @@
 """The compilation script for this project using SCons."""
+import sys
+import site
+import sysconfig
+from os import path
 from os import environ
 
 
 # create a separate build directory
 VariantDir('build', 'src', duplicate=0)
 
+# Get the virtual environment site-packages directory
+venv_path = site.getsitepackages()[0]
+pybind11_path = path.join(venv_path, 'pybind11', 'include')
+
+# Get Python include path for the current interpreter
+python_include = sysconfig.get_config_var('INCLUDEPY')
 
 #  the compiler and linker flags for the C++ environment
 FLAGS = [
     '-std=c++1y',
     '-O3',
     '-pipe',
+    '-fPIC',  # Required for shared libraries
 ]
-
 
 # Create the C++ environment
 ENV = Environment(
@@ -21,7 +31,11 @@ ENV = Environment(
     CPPFLAGS=['-Wno-unused-value'],
     CXXFLAGS=FLAGS,
     LINKFLAGS=FLAGS,
-    CPPPATH=['#include'],
+    CPPPATH=[
+        '#include',
+        pybind11_path,
+        python_include,
+    ],
 )
 
 

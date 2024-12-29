@@ -1,4 +1,8 @@
-gym>=0.17.2
+SCons==4.8.1
+pybind11>=2.10.0
+setuptools>=45.0.0
+wheel
+gymnasium==1.0.0
 numpy>=1.18.5
 pyglet<=2.0.1,>=1.4.0
 tqdm>=4.48.2
