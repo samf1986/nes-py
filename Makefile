@@ -4,7 +4,7 @@ PYTHON ?= $(shell which python3)
 # build everything
 all: test deployment
 
-# build the LaiNES CPP code
+# build the SimpleNES C++ code
 lib_emu:
 	$(MAKE) -j8 -C nes_py/nes
 	mv nes_py/nes/libemulator.so nes_py/emulator.so
@@ -28,7 +28,7 @@ clean:
 
 # build the deployment package
 deployment: clean 
-	$(UV) build
+	$(UV) build --sdist --wheel
 
 # ship the deployment package to PyPi
 ship: test deployment

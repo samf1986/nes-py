@@ -225,7 +225,7 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
         self._done = False
 
         # return the _screen_buffer from the emulator
-        return self._screen_buffer, {}
+        return self._screen_buffer, self._get_info()
 
 
     def step(self, action: int) -> Tuple[np.ndarray, SupportsFloat, bool, bool, Dict[str, Any]]:
