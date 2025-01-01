@@ -19,17 +19,17 @@ namespace NES {
 class PictureBus {
  private:
     /// the VRAM on the picture bus
-    std::vector<NES_Byte> ram;
+    static_vector<NES_Byte, 0x800> ram;
     /// indexes where they start in RAM vector
     std::size_t name_tables[4] = {0, 0, 0, 0};
     /// the palette for decoding RGB tuples
-    std::vector<NES_Byte> palette;
+    static_vector<NES_Byte, 0x20> palette;
     /// a pointer to the mapper on the cartridge
     Mapper* mapper;
 
  public:
     /// Initialize a new picture bus.
-    PictureBus() : ram(0x800), palette(0x20), mapper(nullptr) { }
+    PictureBus() : mapper(nullptr) { }
 
     /// Read a byte from an address on the VRAM.
     ///

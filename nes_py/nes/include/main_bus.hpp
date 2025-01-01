@@ -50,9 +50,9 @@ typedef std::unordered_map<IORegisters, ReadCallback, EnumClassHash> IORegisterT
 class MainBus {
  private:
     /// The RAM on the main bus
-    std::vector<NES_Byte> ram;
+    static_vector<NES_Byte, 0x800> ram;
     /// The extended RAM (if the mapper has extended RAM)
-    std::vector<NES_Byte> extended_ram;
+    static_vector<NES_Byte, 0x2000> extended_ram;
     /// a pointer to the mapper on the cartridge
     Mapper* mapper;
     /// a map of IO registers to callback methods for writes
@@ -62,7 +62,7 @@ class MainBus {
 
  public:
     /// Initialize a new main bus.
-    MainBus() : ram(0x800, 0), mapper(nullptr) { }
+    MainBus() : mapper(nullptr) { }
 
     /// Return a 8-bit pointer to the RAM buffer's first address.
     ///

@@ -24,23 +24,27 @@ namespace NES {
 struct Core {
     /// the main data bus of the emulator
     MainBus bus;
-    /// the picture bus from the PPU of the emulator
-    PictureBus picture_bus;
     /// The emulator's CPU
     CPU cpu;
     /// the emulators' PPU
     PPU ppu;
+    /// the picture bus from the PPU of the emulator
+    PictureBus picture_bus;
+
+    void initialize(Controller* const controllers);    
+    void reset();
+    void set_mapper(Mapper *mapper);
+    void ppu_step(NESFrameBufferT* const framebuffer);
+    void step(NESFrameBufferT* const framebuffer);
 };
 
 /// An NES Emulator and OpenAI Gym interface
-class Emulator: public Core {
+class Emulator {
  public:
     /// The width of the NES screen in pixels
     static const int WIDTH = SCANLINE_VISIBLE_DOTS;
     /// The height of the NES screen in pixels
     static const int HEIGHT = VISIBLE_SCANLINES;
-
-    static const int NUM_BACKUP_SLOTS = 32+1;
 
     /// Initialize a new emulator with a path to a ROM file.
     ///
@@ -52,13 +56,13 @@ class Emulator: public Core {
     ///
     /// @return a 32-bit pointer to the screen buffer's first address
     ///
-    inline NES_Pixel* get_screen_buffer() { return ppu.get_screen_buffer(); }
+    inline NESFrameBufferT* const get_screen_buffer() { return &framebuffer; }
 
     /// Return a 8-bit pointer to the RAM buffer's first address.
     ///
     /// @return a 8-bit pointer to the RAM buffer's first address
     ///
-    inline NES_Byte* get_memory_buffer() { return bus.get_memory_buffer(); }
+    inline NES_Byte* get_memory_buffer() { return core.bus.get_memory_buffer(); }
 
     /// Return a pointer to a controller port
     ///
@@ -70,36 +74,37 @@ class Emulator: public Core {
     }
 
     /// Load the ROM into the NES.
-    inline void reset() { cpu.reset(bus); ppu.reset(); }
+    inline void reset() { core.cpu.reset(core.bus); core.ppu.reset(); }
 
     /// Perform a step on the emulator, i.e., a single frame.
     void step();
 
-    Core& get_slot(int slot_id) {
-        int idx = std::max<int>(0, std::min<int>(slot_id+1, backup_slots.size()-1));
-        return backup_slots[idx];
+    /// Perform a step on the PPU, i.e., a single frame.
+    void ppu_step();
+
+    /// Create a snapshot state on the emulator.
+    inline void snapshot(Core* const core) {
+        *core = this->core;
     }
 
-    /// Create a backup state on the emulator.
-    inline void backup(int slot_id) {
-        get_slot(slot_id) = *static_cast<Core *>(this);
-    }
-
-    /// Restore the backup state on the emulator.
-    inline void restore(int slot_id) {
-        *static_cast<Core *>(this) = get_slot(slot_id);
+    /// Restore the snapshot state on the emulator.
+    inline void restore(const Core* const core) {
+        this->core = *core;
     }
 
  private:
     /// The number of cycles in 1 frame
     static const int CYCLES_PER_FRAME = 29781;
+
+    /// the core of the emulator
+    Core core;    
     /// the virtual cartridge with ROM and mapper data
     Cartridge cartridge;
     /// the 2 controllers on the emulator
     Controller controllers[2];
 
-    // Backup slots
-    std::array<Core, NUM_BACKUP_SLOTS> backup_slots;    
+    /// the rendering framebuffer of the emulator
+    NESFrameBufferT framebuffer;
 };
 
 }  // namespace NES

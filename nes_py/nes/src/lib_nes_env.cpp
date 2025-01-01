@@ -21,13 +21,10 @@ PYBIND11_MODULE(emulator, m) {
         .def(py::init<const std::string&>())
 
         .def_property_readonly_static("width", [](py::object) { return NES::Emulator::WIDTH; })
-        .def_property_readonly_static("height", [](py::object) { return NES::Emulator::HEIGHT; })
-        .def_property_readonly_static("backup_slots", [](py::object) { return NES::Emulator::NUM_BACKUP_SLOTS; })
+        .def_property_readonly_static("height", [](py::object) { return NES::Emulator::HEIGHT; })        
 
         .def("reset", &NES::Emulator::reset, "Reset the emulator")
         .def("step", &NES::Emulator::step, "Perform a step on the emulator")
-        .def("backup", &NES::Emulator::backup, py::arg("slot"), "Backup the emulator state to the given slot")
-        .def("restore", &NES::Emulator::restore, py::arg("slot"), "Restore the emulator state from the given slot")
         
         .def(
             "screen_buffer", 
@@ -83,6 +80,34 @@ PYBIND11_MODULE(emulator, m) {
                 );
             }, 
             "Get the memory buffer as numpy.ndarray"
+        )
+
+        .def(
+            "dump_state",
+            [](NES::Emulator& emu) -> py::array_t<uint8_t> {
+                // Create a copy of the state data
+                auto* core = new NES::Core;
+                memset(core, 0, sizeof(NES::Core));
+                emu.snapshot(core);
+                
+                return py::array_t<uint8_t>(
+                    {sizeof(NES::Core)},
+                    {1},
+                    reinterpret_cast<uint8_t*>(core),
+                    py::capsule(core, [](void* p) { delete static_cast<NES::Core*>(p); })
+                );
+            },
+            "Dump the current state to bytes"
+        )
+
+        .def(
+            "load_state",
+            [](NES::Emulator& emu, const py::array_t<uint8_t>& state) {
+                emu.restore(reinterpret_cast<const NES::Core*>(state.request().ptr));
+                emu.ppu_step();
+            },
+            py::arg("state"),
+            "Load state from bytes"
         )
     ;
 };

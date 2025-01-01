@@ -43,13 +43,14 @@ def play_human(env: gym.Env, callback=None) -> None:
         env.observation_space.shape[0], # height
         env.observation_space.shape[1], # width
         monitor_keyboard=True,
-        relevant_keys=set(sum(map(list, keys_to_action.keys()), []))
+        relevant_keys=set(sum(map(list, keys_to_action.keys()), [])+[ord('8'), ord('9')])
     )
     # create a done flag for the environment
     done = True
     # prepare frame rate limiting
     target_frame_duration = 1 / env.metadata['render_fps']
     last_frame_time = 0
+    snapshot = None
     # start the main game loop
     try:
         while True:
@@ -67,7 +68,15 @@ def play_human(env: gym.Env, callback=None) -> None:
                 state = env.reset()
                 viewer.show(env.unwrapped.screen)
             # unwrap the action based on pressed relevant keys
-            action = keys_to_action.get(viewer.pressed_keys, _NOP)
+            action = _NOP
+            if ord('8') in viewer.pressed_keys:
+                snapshot = env.dump_state()
+                print(f'len(snapshot): {len(snapshot)}')
+            elif ord('9') in viewer.pressed_keys:
+                env.load_state(snapshot)
+            else:
+                action = keys_to_action.get(viewer.pressed_keys, _NOP)
+
             next_state, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
             

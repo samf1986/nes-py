@@ -34,7 +34,7 @@ void PPU::reset() {
     scanline_sprites.resize(0);
 }
 
-void PPU::cycle(PictureBus& bus) {
+void PPU::cycle(PictureBus& bus, NESFrameBufferT* const screen) {
     switch (pipeline_state) {
         case PRE_RENDER: {
             if (cycles == 1)
@@ -175,7 +175,7 @@ void PPU::cycle(PictureBus& bus) {
                 else if (!bgOpaque && !sprOpaque)
                     paletteAddr = 0;
                 // lookup the pixel in the palette and write it to the screen
-                screen[y][x] = PALETTE[bus.read_palette(paletteAddr)];
+                (*screen)[y][x] = PALETTE[bus.read_palette(paletteAddr)];
             }
             else if (cycles == SCANLINE_VISIBLE_DOTS + 1 && is_showing_background) {
                 //Shamelessly copied from nesdev wiki

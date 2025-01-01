@@ -10,6 +10,7 @@
 
 #include "common.hpp"
 #include "picture_bus.hpp"
+#include <array>
 
 namespace NES {
 
@@ -24,15 +25,17 @@ const int SCANLINE_END_CYCLE = 341;
 /// The last scanline per frame
 const int FRAME_END_SCANLINE = 261;
 
+typedef NES_Pixel NESFrameBufferT[VISIBLE_SCANLINES][SCANLINE_VISIBLE_DOTS];
+
 /// The Picture Processing Unit (PPU) for the NES
 class PPU {
  private:
     /// The callback to fire when entering vertical blanking mode
     std::function<void(void)> vblank_callback;
     /// The OAM memory (sprites)
-    std::vector<NES_Byte> sprite_memory;
+    static_vector<NES_Byte, 64 * 4> sprite_memory;
     /// OAM memory (sprites) for the next scanline
-    std::vector<NES_Byte> scanline_sprites;
+    static_vector<NES_Byte, 8> scanline_sprites;
 
     /// The current pipeline state of the PPU
     enum State {
@@ -98,17 +101,12 @@ class PPU {
     /// The value to increment the data address by
     NES_Address data_address_increment;
 
-    /// The internal screen data structure as a vector representation of a
-    /// matrix of height matching the visible scans lines and width matching
-    /// the number of visible scan line dots
-    NES_Pixel screen[VISIBLE_SCANLINES][SCANLINE_VISIBLE_DOTS];
-
  public:
     /// Initialize a new PPU.
-    PPU() : sprite_memory(64 * 4) { }
+    PPU() { }
 
     /// Perform a single cycle on the PPU.
-    void cycle(PictureBus& bus);
+    void cycle(PictureBus& bus, NESFrameBufferT* const screen);
 
     /// Reset the PPU.
     void reset();
@@ -179,9 +177,6 @@ class PPU {
     inline void set_OAM_data(NES_Byte value) {
         sprite_memory[sprite_data_address++] = value;
     }
-
-    /// Return a pointer to the screen buffer.
-    inline NES_Pixel* get_screen_buffer() { return *screen; }
 };
 
 }  // namespace NES

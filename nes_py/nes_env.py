@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import gymnasium as gym
+import lz4.block as lz4
 from gymnasium.spaces import Box
 from gymnasium.spaces import Discrete
 
@@ -23,18 +24,15 @@ from nes_py._image_viewer import ImageViewer
 
 @dataclass(init=False)
 class NESEmulatorWrapper:    
-    _has_backup: bool
     _rom_path: str
-    _emulator: NESEmulator        
+    _emulator: NESEmulator    
 
     height: int = NESEmulator.height
     width: int = NESEmulator.width
-    backup_slots: int = NESEmulator.backup_slots-1
 
     def __init__(self, rom_path: str):    
         NESEmulatorWrapper.check_rom_compatibility(ROM.from_path(rom_path))
         
-        self._has_backup = False
         self._rom_path = rom_path
         self._emulator = NESEmulator(rom_path)
         
@@ -81,21 +79,14 @@ class NESEmulatorWrapper:
         return self._memory_buffer
     
     @property
-    def screen(self) -> np.ndarray:
-        return self._screen_buffer    
+    def screen(self) -> bytes:
+        return self._screen_buffer
        
-    def _backup(self, slot_id: int = -1):
-        if slot_id < -1 or slot_id > self.backup_slots:
-            raise RuntimeError(f'Only {self.backup_slots} backup slots available')
+    def dump_state(self) -> np.ndarray:
+        return self._emulator.dump_state()
 
-        self._emulator.backup(slot_id)
-        self._has_backup = True
-
-    def _restore(self, slot_id: int = -1):
-        if slot_id < -1 or slot_id > self.backup_slots:
-            raise RuntimeError(f'Only {self.backup_slots} backup slots available')
-
-        self._emulator.restore(slot_id) 
+    def load_state(self, snapshot: np.ndarray):
+        self._emulator.load_state(snapshot)
 
     def frame_advance(self, action: Union[int, Tuple[int, int]]) -> None:
         """
@@ -161,6 +152,7 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
     _done: bool    
     _viewer: Optional[ImageViewer]
     _np_random: np.random.RandomState
+    _snapshot: Optional[np.ndarray]
 
     # relevant meta-data about the environment
     metadata: ClassVar[Dict[str, Any]] = {
@@ -187,6 +179,7 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
 
         self._viewer = None
         self._done = True
+        self._snapshot = None
 
 
     def reset(
@@ -213,7 +206,7 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
         self._will_reset()
 
         # reset the emulator
-        if self._has_backup:
+        if self._snapshot:
             self._restore()
         else:
             self._emulator.reset()
@@ -361,6 +354,15 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
     def get_action_meanings(self):
         """Return a list of actions meanings."""
         return ['NOOP']
+    
+    def _backup(self):
+        self._snapshot = self.dump_state()
+
+    def _restore(self):
+        if self._snapshot is None:
+            raise ValueError('no snapshot to restore')
+        
+        self.load_state(self._snapshot)
 
 
 # explicitly define the outward facing API of this module
