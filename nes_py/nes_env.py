@@ -206,7 +206,7 @@ class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
         self._will_reset()
 
         # reset the emulator
-        if self._snapshot:
+        if self._snapshot is not None:
             self._restore()
         else:
             self._emulator.reset()
