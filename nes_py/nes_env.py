@@ -22,8 +22,46 @@ from nes_py.emulator import NESEmulator
 from nes_py._image_viewer import ImageViewer
 
 
+
+class NESGameCallbacks:
+    def _will_reset(self):
+        """Handle any RAM hacking after a reset occurs."""
+        pass
+
+    def _did_reset(self):
+        """Handle any RAM hacking after a reset occurs."""
+        pass
+
+    def _will_restore(self):
+        """Handle any RAM hacking after a restore occurs."""
+        pass
+
+    def _did_restore(self):
+        """Handle any RAM hacking after a restore occurs."""
+        pass
+
+    def _will_step(self):
+        """Handle any RAM hacking after a step occurs."""
+        pass    
+
+    def _did_step(self, done: bool):
+        """Handle any RAM hacking after a step occurs."""
+        pass
+
+    def _get_reward(self) -> float:
+        """Return the reward after a step occurs."""
+        return 0
+
+    def _get_done(self) -> bool:
+        """Return True if the episode is over, False otherwise."""
+        return False
+
+    def _get_info(self) -> Dict[str, Any]:
+        """Return the info after a step occurs."""
+        return {}
+    
 @dataclass(init=False)
-class NESEmulatorWrapper:    
+class NESEmulatorWrapper(NESGameCallbacks):    
     _rom_path: str
     _emulator: NESEmulator    
 
@@ -86,7 +124,9 @@ class NESEmulatorWrapper:
         return self._emulator.dump_state()
 
     def load_state(self, snapshot: np.ndarray):
+        self._will_restore()
         self._emulator.load_state(snapshot)
+        self._did_restore()
 
     def frame_advance(self, action: Union[int, Tuple[int, int]]) -> None:
         """
@@ -112,30 +152,7 @@ class NESEmulatorWrapper:
         self._emulator.step()        
 
 
-class NESGameCallbacks:
-    def _will_reset(self):
-        """Handle any RAM hacking after a reset occurs."""
-        pass
 
-    def _did_reset(self):
-        """Handle any RAM hacking after a reset occurs."""
-        pass
-
-    def _did_step(self, done: bool):
-        """Handle any RAM hacking after a step occurs."""
-        pass    
-
-    def _get_reward(self) -> float:
-        """Return the reward after a step occurs."""
-        return 0
-
-    def _get_done(self) -> bool:
-        """Return True if the episode is over, False otherwise."""
-        return False
-
-    def _get_info(self) -> Dict[str, Any]:
-        """Return the info after a step occurs."""
-        return {}
 
 
 class StepResult(NamedTuple):
@@ -147,7 +164,7 @@ class StepResult(NamedTuple):
 
 
 @dataclass(init=False)
-class NESEnv(NESEmulatorWrapper, NESGameCallbacks, gym.Env[np.ndarray, int]):
+class NESEnv(NESEmulatorWrapper, gym.Env[np.ndarray, int]):
     """An NES environment based on the LaiNES emulator."""
     _done: bool    
     _viewer: Optional[ImageViewer]

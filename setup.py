@@ -21,7 +21,8 @@ class MakeBuilder(build_ext):
         make_path: str = os.path.join(extension_path, '..')
         
         try:
-            subprocess.check_call(['make', '-C', make_path])
+            n_jobs = min(16, os.cpu_count())
+            subprocess.check_call(['make', '-C', make_path, f'-j{n_jobs}'])
             
             built_lib: str = os.path.join(make_path, 'libemulator.so')
             target_lib: str = self.get_ext_fullpath(ext.name)

@@ -6,7 +6,7 @@ all: test deployment
 
 # build the SimpleNES C++ code
 lib_emu:
-	$(MAKE) -j8 -C nes_py/nes
+	$(MAKE) -C nes_py/nes $(MAKEFLAGS)
 	mv nes_py/nes/libemulator.so nes_py/emulator.so
 
 install:
