@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <array>
 #include <algorithm>
+#include <stdexcept>
 
 namespace NES {
 

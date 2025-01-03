@@ -9,6 +9,8 @@
 #include "mapper_factory.hpp"
 #include "log.hpp"
 
+#include <cstring>
+
 namespace NES {
 
 void Core::initialize(Controller* const controllers) 
