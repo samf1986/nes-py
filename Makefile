@@ -14,7 +14,8 @@ install:
 
 # run the Python test suite
 test: install
-	$(PYTHON) -m unittest discover .
+	(cd nes_py/tests && $(PYTHON) -m unittest discover .)
+
 
 # clean the build directory
 clean:
@@ -27,7 +28,7 @@ clean:
 	find . -name "emulator.so" -delete
 
 # build the deployment package
-deployment: clean 
+deployment: clean test
 	$(UV) build --sdist --wheel
 
 # ship the deployment package to PyPi

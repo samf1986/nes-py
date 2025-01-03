@@ -5,7 +5,7 @@ import numpy as np
 import gymnasium as gym
 
 from nes_py.nes_env import NESEnv
-from .rom_file_abs_path import rom_file_abs_path
+from rom_file_abs_path import rom_file_abs_path
 
 
 class ShouldRaiseTypeErrorOnInvalidROMPathType(TestCase):

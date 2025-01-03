@@ -5,8 +5,9 @@ http://tuxnes.sourceforge.net/nesmapper.txt
 
 """
 from unittest import TestCase
-from .rom_file_abs_path import rom_file_abs_path
+
 from nes_py._rom import ROM
+from rom_file_abs_path import rom_file_abs_path
 
 
 class ShouldNotCreateInstanceOfROMWithoutPath(TestCase):

@@ -1,14 +1,20 @@
 """An environment wrapper to convert binary to discrete action space."""
+from typing import Any
 from typing import Dict
-from typing import SupportsFloat
 from typing import ClassVar
+from typing import Optional
+from typing import SupportsFloat
 
 import gymnasium as gym
 from gymnasium import Env
 from gymnasium import Wrapper
+from gymnasium.core import ObsType
+from gymnasium.core import ActType
+from gymnasium.core import WrapperObsType
+from gymnasium.core import WrapperActType
 
 
-class JoypadSpace(Wrapper):
+class JoypadSpace(Wrapper[WrapperObsType, WrapperActType, ObsType, ActType]):
     """An environment wrapper to convert binary to discrete action space."""
 
     # a mapping of buttons to binary values
@@ -59,7 +65,10 @@ class JoypadSpace(Wrapper):
             self._action_map[action] = byte_action
             self._action_meanings[action] = ' '.join(button_list)
 
-    def step(self, action):
+    def step(
+        self, 
+        action: WrapperActType
+    ) -> tuple[WrapperObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """
         Take a step using the given action.
 
@@ -77,9 +86,14 @@ class JoypadSpace(Wrapper):
         # take the step and record the output
         return self.env.step(self._action_map[action])
 
-    def reset(self):
+    def reset(
+        self, 
+        *, 
+        seed: Optional[int] = None, 
+        options: Optional[dict[str, Any]] = None
+    ) -> tuple[WrapperObsType, dict[str, Any]]:
         """Reset the environment and return the initial observation."""
-        return self.env.reset()
+        return self.env.reset(seed=seed, options=options)
 
     def get_keys_to_action(self):
         """Return the dictionary of keyboard keys to actions."""
