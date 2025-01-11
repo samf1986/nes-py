@@ -173,7 +173,7 @@ class NESEnv(NESEmulatorWrapper, gym.Env[np.ndarray, int]):
 
     # relevant meta-data about the environment
     metadata: ClassVar[Dict[str, Any]] = {
-        'render.modes': ['rgb_array', 'human'],
+        'render_modes': ['rgb_array', 'human'],
         'render_fps': 60
     }
 
