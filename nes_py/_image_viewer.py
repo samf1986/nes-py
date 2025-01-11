@@ -7,11 +7,7 @@ from typing import Optional
 from typing import ClassVar
 from dataclasses import dataclass
 
-import pyglet
 import numpy as np
-import pyglet.gl as gl
-from pyglet.window import key
-from pyglet.window import BaseWindow
 
 
 
@@ -37,16 +33,14 @@ class ImageViewer:
     height: int
     width: int
     monitor_keyboard: bool
-    _pressed_keys: List[int]
-    _is_escape_pressed: bool
     relevant_keys: Optional[List[int]]
-    _window: Optional[BaseWindow]
+    _pressed_keys: List[int]
+    _is_escape_pressed: bool    
+    _window: Optional
+    _pyglet: Optional
 
     # Map pyglet key codes to their native equivalents
-    KEY_MAP: ClassVar[Dict[int, int]] = {
-        key.ENTER: ord('\r'),
-        key.SPACE: ord(' '),
-    }
+    KEY_MAP: Dict[int, int]
 
     def __init__(
         self, 
@@ -71,14 +65,22 @@ class ImageViewer:
         if threading.current_thread() is not threading.main_thread():
             raise RuntimeError('rendering from python threads is not supported')
         
-        self.caption = caption
+        import pyglet
+        self._pyglet = pyglet
+
+        self.KEY_MAP: Dict[int, int] = {
+            pyglet.window.key.ENTER: ord('\r'),
+            pyglet.window.key.SPACE: ord(' '),
+        }        
+        
+        self._window = None
         self.height = height
         self.width = width
-        self.monitor_keyboard = monitor_keyboard
-        self.relevant_keys = relevant_keys
-        self._window = None
-        self._pressed_keys = []
+        self.caption = caption
+        self._pressed_keys = list()
         self._is_escape_pressed = False
+        self.relevant_keys = relevant_keys
+        self.monitor_keyboard = monitor_keyboard        
 
     @property
     def is_open(self) -> bool:
@@ -153,7 +155,7 @@ class ImageViewer:
         If keyboard monitoring is enabled, sets up the key event handlers.
         """
         # create a window for this image viewer instance
-        self._window = pyglet.window.Window(
+        self._window = self._pyglet.window.Window(
             caption=self.caption,
             height=self.height,
             width=self.width,
@@ -194,7 +196,7 @@ class ImageViewer:
         self._window.switch_to()
         self._window.dispatch_events()
 
-        image = pyglet.image.ImageData(
+        image = self._pyglet.image.ImageData(
             frame.shape[1],
             frame.shape[0],
             'RGB',
@@ -203,15 +205,15 @@ class ImageViewer:
         )
         
         texture = image.get_texture()        
-        gl.glTexParameteri(
-            gl.GL_TEXTURE_2D, 
-            gl.GL_TEXTURE_MAG_FILTER, 
-            gl.GL_NEAREST
+        self._pyglet.gl.glTexParameteri(
+            self._pyglet.gl.GL_TEXTURE_2D, 
+            self._pyglet.gl.GL_TEXTURE_MAG_FILTER, 
+            self._pyglet.gl.GL_NEAREST
         )
-        gl.glTexParameteri(
-            gl.GL_TEXTURE_2D, 
-            gl.GL_TEXTURE_MIN_FILTER, 
-            gl.GL_NEAREST
+        self._pyglet.gl.glTexParameteri(
+            self._pyglet.gl.GL_TEXTURE_2D, 
+            self._pyglet.gl.GL_TEXTURE_MIN_FILTER, 
+            self._pyglet.gl.GL_NEAREST
         )
         
         image.blit(0, 0, width=self._window.width, height=self._window.height) 
